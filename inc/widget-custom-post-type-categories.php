@@ -38,6 +38,7 @@ class WP_Custom_Post_Type_Widgets_Categories extends WP_Widget {
 		$c = ! empty( $instance['count'] ) ? '1' : '0';
 		$h = ! empty( $instance['hierarchical'] ) ? '1' : '0';
 		$d = ! empty( $instance['dropdown'] ) ? '1' : '0';
+		$a = ! empty( $instance['allbase'] ) ? '1' : '0';
 
 		echo $args['before_widget'];
 		if ( $title ) {
@@ -92,6 +93,26 @@ class WP_Custom_Post_Type_Widgets_Categories extends WP_Widget {
 ?>
 		<ul>
 <?php
+		if ( $a > 0 ) {
+			function get_taxonomy_post_types( $tax = 'category' ) {
+			    $out = array();
+			    $post_types = get_post_types();
+			    foreach( $post_types as $post_type ){
+			        $taxonomies = get_object_taxonomies( $post_type );
+			        if( in_array( $tax, $taxonomies ) ){
+			            $out[] = $post_type;
+			        }
+			    }
+			    return $out; // array of post types, [0] for first [1] for second, etc.
+			}
+			$initial_cpt_for_tax = get_taxonomy_post_types($taxonomy)[0];
+			$cpt_obj = get_post_type_object($initial_cpt_for_tax);
+
+?>
+		<li><a href="<?php echo esc_url( bloginfo( 'url' ).'/'.$cpt_obj->rewrite[slug] ); ?>">All <?php echo $cpt_obj->labels->name; ?></a></li>
+
+<?php   }
+
 		$cat_args['title_li'] = '';
 
 		/**
@@ -117,6 +138,7 @@ class WP_Custom_Post_Type_Widgets_Categories extends WP_Widget {
 		$instance['count'] = ! empty( $new_instance['count'] ) ? 1 : 0;
 		$instance['hierarchical'] = ! empty( $new_instance['hierarchical'] ) ? 1 : 0;
 		$instance['dropdown'] = ! empty( $new_instance['dropdown'] ) ? 1 : 0;
+		$instance['allbase'] = ! empty( $new_instance['allbase'] ) ? 1 : 0;
 
 		$this->flush_widget_cache();
 
@@ -139,6 +161,7 @@ class WP_Custom_Post_Type_Widgets_Categories extends WP_Widget {
 		$count = isset( $instance['count'] ) ? (bool) $instance['count'] : false;
 		$hierarchical = isset( $instance['hierarchical'] ) ? (bool) $instance['hierarchical'] : false;
 		$dropdown = isset( $instance['dropdown'] ) ? (bool) $instance['dropdown'] : false;
+		$allbase = isset( $instance['allbase'] ) ? (bool) $instance['allbase'] : false;
 ?>
 		<p><label for="<?php echo $this->get_field_id( 'title' ); ?>"><?php _e( 'Title:', 'custom-post-type-widgets' ); ?></label>
 		<input class="widefat" id="<?php echo $this->get_field_id( 'title' ); ?>" name="<?php echo $this->get_field_name( 'title' ); ?>" type="text" value="<?php echo $title; ?>" /></p>
@@ -162,14 +185,19 @@ class WP_Custom_Post_Type_Widgets_Categories extends WP_Widget {
 		</p>
 		<?php } ?>
 
-		<p><input type="checkbox" class="checkbox" id="<?php echo $this->get_field_id( 'dropdown' ); ?>" name="<?php echo $this->get_field_name( 'dropdown' ); ?>"<?php checked( $dropdown ); ?> />
+		<p>
+		<input type="checkbox" class="checkbox" id="<?php echo $this->get_field_id( 'dropdown' ); ?>" name="<?php echo $this->get_field_name( 'dropdown' ); ?>"<?php checked( $dropdown ); ?> />
 		<label for="<?php echo $this->get_field_id( 'dropdown' ); ?>"><?php _e( 'Display as dropdown', 'custom-post-type-widgets' ); ?></label><br />
 
 		<input type="checkbox" class="checkbox" id="<?php echo $this->get_field_id( 'count' ); ?>" name="<?php echo $this->get_field_name( 'count' ); ?>"<?php checked( $count ); ?> />
 		<label for="<?php echo $this->get_field_id( 'count' ); ?>"><?php _e( 'Show post counts', 'custom-post-type-widgets' ); ?></label><br />
 
 		<input type="checkbox" class="checkbox" id="<?php echo $this->get_field_id( 'hierarchical' ); ?>" name="<?php echo $this->get_field_name( 'hierarchical' ); ?>"<?php checked( $hierarchical ); ?> />
-		<label for="<?php echo $this->get_field_id( 'hierarchical' ); ?>"><?php _e( 'Show hierarchy', 'custom-post-type-widgets' ); ?></label></p>
+		<label for="<?php echo $this->get_field_id( 'hierarchical' ); ?>"><?php _e( 'Show hierarchy', 'custom-post-type-widgets' ); ?></label><br />
+
+		<input type="checkbox" class="checkbox" id="<?php echo $this->get_field_id( 'allbase' ); ?>" name="<?php echo $this->get_field_name( 'allbase' ); ?>"<?php checked( $allbase ); ?> />
+		<label for="<?php echo $this->get_field_id( 'allbase' ); ?>"><?php _e( 'Show all link', 'custom-post-type-widgets' ); ?></label>
+		</p>
 <?php
 	}
 
@@ -181,16 +209,25 @@ class WP_Custom_Post_Type_Widgets_Categories extends WP_Widget {
 	 */
 	public function wp_custom_post_type_dropdown_categories( $args = '' ) {
 		$defaults = array(
-			'show_option_all' => '', 'show_option_none' => '',
-			'orderby' => 'id', 'order' => 'ASC',
+			'show_option_all' => '',
+			'show_option_none' => '',
+			'orderby' => 'id',
+			'order' => 'ASC',
 			'show_count' => 0,
-			'hide_empty' => 1, 'child_of' => 0,
-			'exclude' => '', 'echo' => 1,
-			'selected' => 0, 'hierarchical' => 0,
-			'name' => 'cat', 'id' => '',
-			'class' => 'postform', 'depth' => 0,
-			'tab_index' => 0, 'taxonomy' => 'category',
-			'hide_if_empty' => false, 'option_none_value' => -1,
+			'hide_empty' => 1,
+			'child_of' => 0,
+			'exclude' => '',
+			'echo' => 1,
+			'selected' => 0,
+			'hierarchical' => 0,
+			'name' => 'cat',
+			'id' => '',
+			'class' => 'postform',
+			'depth' => 0,
+			'tab_index' => 0,
+			'taxonomy' => 'category',
+			'hide_if_empty' => false,
+			'option_none_value' => -1,
 			'value_field' => 'term_id',
 		);
 
